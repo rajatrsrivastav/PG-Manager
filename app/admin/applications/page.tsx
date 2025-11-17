@@ -84,7 +84,6 @@ export default function Applications() {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
         <aside className="w-64 border-r bg-card min-h-[calc(100vh-73px)]">
           <nav className="p-4 space-y-2">
             <NavLink
@@ -108,7 +107,7 @@ export default function Applications() {
 
         <main className="flex-1 p-8">
           <div className="mb-6">
-            <Button variant="outline" onClick={() => router.push("/admin/dashboard")}>
+            <Button variant="outline" onClick={() => navigate("/admin/dashboard")}>
               ← Back to Dashboard
             </Button>
           </div>

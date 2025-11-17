@@ -42,7 +42,6 @@ export default function Home() {
       </header>
 
       <main className="container mx-auto px-4 py-16">
-        {/* Hero Section */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <h2 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
             Modern PG Management System
@@ -58,7 +57,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Features Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
           <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardContent className="pt-6">

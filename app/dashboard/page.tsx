@@ -64,7 +64,6 @@ export default function StudentDashboard() {
       </header>
 
       <main className="container mx-auto px-4 py-8 space-y-6">
-        {/* Payment Status Card */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -121,7 +120,6 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
 
-        {/* Payment History */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -160,7 +158,6 @@ export default function StudentDashboard() {
           </CardContent>
         </Card>
 
-        {/* Profile Section */}
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

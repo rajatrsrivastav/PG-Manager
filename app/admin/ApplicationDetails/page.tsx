@@ -72,7 +72,6 @@ export default function ApplicationDetails() {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
         <aside className="w-64 border-r bg-card min-h-[calc(100vh-73px)]">
           <nav className="p-4 space-y-2">
             <NavLink
@@ -102,7 +101,6 @@ export default function ApplicationDetails() {
           </div>
 
           <div className="space-y-6">
-            {/* Header Card */}
             <Card className="shadow-md">
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -117,7 +115,6 @@ export default function ApplicationDetails() {
               </CardHeader>
             </Card>
 
-            {/* Personal Information */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
@@ -144,7 +141,6 @@ export default function ApplicationDetails() {
               </CardContent>
             </Card>
 
-            {/* Emergency Contact */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle>Emergency Contact</CardTitle>
@@ -163,7 +159,6 @@ export default function ApplicationDetails() {
               </CardContent>
             </Card>
 
-            {/* Uploaded Documents */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle>Uploaded Documents</CardTitle>
@@ -191,7 +186,6 @@ export default function ApplicationDetails() {
               </CardContent>
             </Card>
 
-            {/* Application Metadata */}
             <Card className="shadow-md">
               <CardHeader>
                 <CardTitle>Application Details</CardTitle>
@@ -222,7 +216,6 @@ export default function ApplicationDetails() {
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
             {application.status === "Pending" && (
               <div className="flex gap-4">
                 <Button onClick={handleApprove} className="flex-1">

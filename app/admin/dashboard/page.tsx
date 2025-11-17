@@ -56,7 +56,6 @@ export default function AdminDashboard() {
       </header>
 
       <div className="flex">
-        {/* Sidebar */}
         <aside className="w-64 border-r bg-card min-h-[calc(100vh-73px)]">
           <nav className="p-4 space-y-2">
             <NavLink
@@ -80,7 +79,6 @@ export default function AdminDashboard() {
         </aside>
 
         <main className="flex-1 p-8 space-y-6">
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -123,7 +121,6 @@ export default function AdminDashboard() {
             </Card>
           </div>
 
-          {/* Students Payment Table */}
           <Card className="shadow-md">
             <CardHeader>
               <CardTitle>Student Fee Payment Management</CardTitle>
