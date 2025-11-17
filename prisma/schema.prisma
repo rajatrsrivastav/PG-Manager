@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PAID
+  UNPAID
+  OVERDUE
+}
+
+model User {
+  id                Int               @id @default(autoincrement())
+  email             String            @unique
+  name              String?
+  phoneNumber       String?
+  passwordHash      String
+  profilePhoto      String?
+  role              Role              @default(STUDENT)
+  status            ApplicationStatus @default(PENDING)
+  isCurrentOccupant Boolean           @default(false)
+  movedOutAt        DateTime?
+
+  collegeIdCard         String?
+  collegeIdCardUrl      String?
+  collegeIdCardPublicId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  application Application?
+  approvals   Application[] @relation("Approvals")
+  payments    Payment[]
+
+  @@map("users")
+}
+
+model Application {
+  id           Int               @id @default(autoincrement())
+  user         User              @relation(fields: [userId], references: [id])
+  userId       Int               @unique
+  submittedAt  DateTime          @default(now())
+  approvedById Int?
+  approvedBy   User?             @relation("Approvals", fields: [approvedById], references: [id])
+  approvedAt   DateTime?
+  status       ApplicationStatus @default(PENDING)
+  comments     String?
+
+  @@map("applications")
+}
+
+model Payment {
+  id                   Int           @id @default(autoincrement())
+  student              User          @relation(fields: [studentId], references: [id])
+  studentId            Int
+  month                String
+  amount               Float
+  dueDate              DateTime
+  paymentDate          DateTime?
+  status               PaymentStatus @default(UNPAID)
+  transactionReference String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, month])
+  @@map("payments")
+}

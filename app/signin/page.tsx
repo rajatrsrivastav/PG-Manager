@@ -1,49 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 export default function SignIn() {
+  const { user, loading, login } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
+  useEffect(() => {
+    if (!loading && user) {
+      if (user.role === "STUDENT") {
+        router.push("/dashboard");
+      } else if (user.role === "ADMIN") {
+        router.push("/admin/dashboard");
+      }
+    }
+  }, [user, loading, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-lg">Loading...</p>
+      </div>
+    );
+  }
+
+  if (user) {
+    return null;
+  }
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setIsLoading(true);
+
     if (!formData.email || !formData.password) {
-      toast.error("Please fill all fields");
+      showToast("Please fill all fields", "error");
+      setIsLoading(false);
       return;
     }
 
-    // Mock authentication - in real app, check against backend
-    if (formData.email === "admin@pg.com") {
-      toast.success("Welcome, Admin!");
-      router.push("/admin/dashboard");
-    } else {
-      toast.success("Welcome back!");
-      router.push("/student/dashboard");
+    try {
+      await login(formData.email, formData.password);
+      showToast("Signed in successfully!", "success");
+    } catch (error: any) {
+      showToast(error.message || "Invalid credentials", "error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleGoogleSignIn = () => {
-    toast.info("Google Sign-In integration coming soon!");
+    showToast("Google Sign-In integration coming soon!", "error");
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>

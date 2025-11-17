@@ -14,7 +14,6 @@ export default function ApplicationDetails() {
   const params = useParams();
   const id = params.id as string;
 
-  // Mock data - in real app, fetch based on id
   const application = {
     id: parseInt(id || "1"),
     name: "Alex Kumar",

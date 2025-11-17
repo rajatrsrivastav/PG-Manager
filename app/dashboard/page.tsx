@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogOut, CreditCard, User, Calendar, CheckCircle2, XCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 export default function StudentDashboard() {
-  const router = useRouter();
+  const { logout } = useAuth();
+  const { showToast } = useToast();
   
-  // Mock data
   const paymentStatus = {
     currentMonth: "November 2025",
     isPaid: false,
@@ -35,19 +36,20 @@ export default function StudentDashboard() {
 
   const handlePayment = () => {
     if (paymentStatus.isPaid) {
-      toast.info("You have already paid for this month!");
+      showToast("You have already paid for this month!", "error");
       return;
     }
-    toast.success("Payment processing... This is a demo.");
+    showToast("Payment processing... This is a demo.", "success");
   };
 
-  const handleLogout = () => {
-    toast.success("Logged out successfully");
-    router.push("/signin");
+  const handleLogout = async () => {
+    await logout();
+    showToast("Logged out successfully", "success");
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <ProtectedRoute allowedRole="STUDENT">
+      <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Student Portal</h1>
@@ -193,5 +195,6 @@ export default function StudentDashboard() {
         </Card>
       </main>
     </div>
+    </ProtectedRoute>
   );
 }

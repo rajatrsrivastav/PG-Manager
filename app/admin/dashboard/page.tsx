@@ -4,14 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogOut, Users, DollarSign, AlertCircle, CheckCircle2, Trash2, FileText } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/contexts/ToastContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { NavLink } from "../../../components/NavLink";
+import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { logout } = useAuth();
+  const { showToast } = useToast();
 
-  // Mock data
   const stats = {
     totalStudents: 45,
     paidThisMonth: 38,
@@ -28,16 +31,17 @@ export default function AdminDashboard() {
   ];
 
   const handleDelete = (id: number, name: string) => {
-    toast.success(`Student ${name} removed successfully`);
+    showToast(`Student ${name} removed successfully`, "success");
   };
 
-  const handleLogout = () => {
-    toast.success("Logged out successfully");
-    router.push("/signin");
+  const handleLogout = async () => {
+    await logout();
+    showToast("Logged out successfully", "success");
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <ProtectedRoute allowedRole="ADMIN">
+      <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Admin Portal</h1>
@@ -177,5 +181,6 @@ export default function AdminDashboard() {
         </main>
       </div>
     </div>
+    </ProtectedRoute>
   );
 }

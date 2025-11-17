@@ -5,9 +5,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { Building2, Users, Shield, CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
   const router = useRouter();
+  const { user } = useAuth();
+
+  const handleGetStarted = () => {
+    if (user) {
+      if (user.role === "STUDENT") {
+        router.push("/dashboard");
+      } else if (user.role === "ADMIN") {
+        router.push("/admin/dashboard");
+      }
+    } else {
+      router.push("/signup");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,7 +52,7 @@ export default function Home() {
             Track payments, manage applications, and maintain student records effortlessly.
           </p>
           <div className="flex gap-4 justify-center">
-            <Button size="lg" onClick={() => router.push("/signup")}>
+            <Button size="lg" onClick={handleGetStarted}>
               Get Started
             </Button>
           </div>
@@ -94,24 +108,7 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
-
-        {/* CTA Section */}
-        <div className="text-center bg-card rounded-2xl shadow-md p-12">
-          <h3 className="text-3xl font-bold mb-4">Ready to Get Started?</h3>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join us today and experience seamless PG management
-          </p>
-          <Button size="lg" onClick={() => router.push("/signup")}>
-            Create Your Account
-          </Button>
-        </div>
       </main>
-
-      <footer className="border-t bg-card mt-16">
-        <div className="container mx-auto px-4 py-8 text-center text-muted-foreground">
-          <p>&copy; 2025 PG Manager. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }
