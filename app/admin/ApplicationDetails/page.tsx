@@ -8,6 +8,7 @@ import { useRouter, useParams } from "next/navigation";
 import { toast } from "sonner";
 import { NavLink } from "../../../components/NavLink";
 import { Badge } from "@/components/ui/badge";
+import Image from "next/image";
 
 export default function ApplicationDetails() {
   const router = useRouter();
@@ -167,12 +168,14 @@ export default function ApplicationDetails() {
                 <div>
                   <p className="text-sm text-muted-foreground mb-2">College ID Card</p>
                   <div className="border rounded-lg p-4 bg-muted/50">
-                    <img
-                      src={application.collegeIdUrl}
-                      alt="College ID"
-                      className="max-w-full h-auto rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => window.open(application.collegeIdUrl, "_blank")}
-                    />
+                    <div className="relative w-full h-64 cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(application.collegeIdUrl, "_blank")}>
+                      <Image
+                        src={application.collegeIdUrl}
+                        alt="College ID"
+                        fill
+                        className="object-contain rounded-lg"
+                      />
+                    </div>
                     <Button
                       variant="link"
                       className="mt-2 p-0"

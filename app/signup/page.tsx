@@ -128,7 +128,7 @@ export default function SignUp() {
       } else {
         showToast(data.message || "Something went wrong", "error");
       }
-    } catch (error) {
+    } catch {
       showToast("Network error. Please try again.", "error");
     } finally {
       setIsLoading(false);

@@ -8,10 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { NavLink } from "../../../components/NavLink";
-import { useRouter } from "next/navigation";
 
 export default function AdminDashboard() {
-  const router = useRouter();
   const { logout } = useAuth();
   const { showToast } = useToast();
 

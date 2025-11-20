@@ -107,7 +107,7 @@ export default function Applications() {
 
         <main className="flex-1 p-8">
           <div className="mb-6">
-            <Button variant="outline" onClick={() => navigate("/admin/dashboard")}>
+            <Button variant="outline" onClick={() => router.push("/admin/dashboard")}>
               ← Back to Dashboard
             </Button>
           </div>
