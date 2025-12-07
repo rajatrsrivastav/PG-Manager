@@ -7,77 +7,54 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  STUDENT
-}
-
-enum ApplicationStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum PaymentStatus {
-  PAID
-  UNPAID
-  OVERDUE
-}
-
 model User {
-  id                Int               @id @default(autoincrement())
-  email             String            @unique
-  name              String?
-  phoneNumber       String?
-  passwordHash      String
-  profilePhoto      String?
-  role              Role              @default(STUDENT)
-  status            ApplicationStatus @default(PENDING)
-  isCurrentOccupant Boolean           @default(false)
-  movedOutAt        DateTime?
-
-  collegeIdCard         String?
-  collegeIdCardUrl      String?
-  collegeIdCardPublicId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  application Application?
-  approvals   Application[] @relation("Approvals")
-  payments    Payment[]
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  pgs          PG[]
 
   @@map("users")
 }
 
-model Application {
-  id           Int               @id @default(autoincrement())
-  user         User              @relation(fields: [userId], references: [id])
-  userId       Int               @unique
-  submittedAt  DateTime          @default(now())
-  approvedById Int?
-  approvedBy   User?             @relation("Approvals", fields: [approvedById], references: [id])
-  approvedAt   DateTime?
-  status       ApplicationStatus @default(PENDING)
-  comments     String?
+model PG {
+  id        Int       @id @default(autoincrement())
+  name      String
+  address   String
+  image     String?
+  ownerId   Int
+  owner     User      @relation(fields: [ownerId], references: [id])
+  students  Student[]
+  createdAt DateTime  @default(now())
 
-  @@map("applications")
+  @@map("pgs")
+}
+
+model Student {
+  id         Int       @id @default(autoincrement())
+  name       String
+  email      String?
+  phone      String?
+  pgId       Int
+  pg         PG        @relation(fields: [pgId], references: [id])
+  monthlyFee Float     @default(0)
+  payments   Payment[]
+  createdAt  DateTime  @default(now())
+
+  @@map("students")
 }
 
 model Payment {
-  id                   Int           @id @default(autoincrement())
-  student              User          @relation(fields: [studentId], references: [id])
-  studentId            Int
-  month                String
-  amount               Float
-  dueDate              DateTime
-  paymentDate          DateTime?
-  status               PaymentStatus @default(UNPAID)
-  transactionReference String?
+  id        Int       @id @default(autoincrement())
+  studentId Int
+  student   Student   @relation(fields: [studentId], references: [id])
+  month     String
+  amount    Float
+  paid      Boolean   @default(false)
+  paidAt    DateTime?
+  dueDate   DateTime
+  createdAt DateTime  @default(now())
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([studentId, month])
   @@map("payments")
 }

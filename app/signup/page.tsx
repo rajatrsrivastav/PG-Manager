@@ -1,266 +1,109 @@
 "use client";
-
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThemeToggle } from "../../components/ThemeToggle";
-import { Upload, ArrowRight, ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useToast } from "@/contexts/ToastContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { Building2, ArrowRight } from "lucide-react";
 
 export default function SignUp() {
   const router = useRouter();
-  const { showToast } = useToast();
-  const { user, loading } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
-    password: "",
-    confirmPassword: "",
-    collegeId: null as File | null,
-  });
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (!loading && user) {
-      if (user.role === "STUDENT") {
-        router.push("/dashboard");
-      } else if (user.role === "ADMIN") {
-        router.push("/admin/dashboard");
-      }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const res = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      router.push("/signin");
+    } else {
+      setError(data.message);
     }
-  }, [user, loading, router]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-lg">Loading...</p>
-      </div>
-    );
-  }
-
-  if (user) {
-    return null;
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setFormData({ ...formData, collegeId: e.target.files[0] });
-    }
-  };
-
-  const validateStep = () => {
-    if (step === 1) {
-      if (!formData.fullName || !formData.email || !formData.phone) {
-        showToast("Please fill all personal information fields", "error");
-        return false;
-      }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-        showToast("Please enter a valid email", "error");
-        return false;
-      }
-      if (!/^\d{10}$/.test(formData.phone)) {
-        showToast("Please enter a valid 10-digit phone number", "error");
-        return false;
-      }
-    }
-    if (step === 2) {
-      if (!formData.password || !formData.confirmPassword) {
-        showToast("Please fill all security fields", "error");
-        return false;
-      }
-      if (formData.password.length < 6) {
-        showToast("Password must be at least 6 characters", "error");
-        return false;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        showToast("Passwords do not match", "error");
-        return false;
-      }
-    }
-    if (step === 3) {
-      if (!formData.collegeId) {
-        showToast("Please upload your college ID card", "error");
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const handleNext = () => {
-    if (validateStep()) {
-      setStep(step + 1);
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!validateStep()) return;
-
-    setIsLoading(true);
-
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          name: formData.fullName,
-          phoneNumber: formData.phone,
-        }),
-        credentials: 'include'
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        showToast("Account created successfully!", "success");
-        router.push("/signin");
-      } else {
-        showToast(data.message || "Something went wrong", "error");
-      }
-    } catch {
-      showToast("Network error. Please try again.", "error");
-    } finally {
-      setIsLoading(false);
-    }
+    setLoading(false);
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-      
-      <Card className="w-full max-w-2xl shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-3xl font-bold">Student Registration</CardTitle>
-          <CardDescription>Step {step} of 3</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {step === 1 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Personal Information</h3>
-              <div>
-                <Label htmlFor="fullName">Full Name *</Label>
-                <Input
-                  id="fullName"
-                  name="fullName"
-                  value={formData.fullName}
-                  onChange={handleInputChange}
-                  placeholder="Enter your full name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="your.email@example.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number *</Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  placeholder="10-digit mobile number"
-                />
-              </div>
-            </div>
-          )}
+      <div className="w-full max-w-md">
+        <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+            <Building2 className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <span className="text-2xl font-bold text-foreground">PG Manager</span>
+        </div>
 
-          {step === 2 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Account Security</h3>
-              <div>
-                <Label htmlFor="password">Password *</Label>
-                <Input
-                  id="password"
-                  name="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Minimum 6 characters"
-                />
-              </div>
-              <div>
-                <Label htmlFor="confirmPassword">Confirm Password *</Label>
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  placeholder="Re-enter your password"
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold">Document Upload</h3>
-              <div>
-                <Label htmlFor="collegeId">College ID Card *</Label>
-                <div className="mt-2 border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
-                  <Upload className="mx-auto h-12 w-12 text-muted-foreground" />
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {formData.collegeId ? formData.collegeId.name : "Click to upload or drag and drop"}
-                  </p>
-                  <Input
-                    id="collegeId"
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={handleFileChange}
-                    className="mt-4"
-                  />
+        <Card className="bg-card border-border">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl text-foreground">Create Account</CardTitle>
+            <CardDescription className="text-muted-foreground">Start managing your PG properties today</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive text-destructive text-sm">
+                  {error}
                 </div>
+              )}
+              <div>
+                <Label className="text-foreground">Full Name</Label>
+                <Input
+                  value={form.name}
+                  onChange={e => setForm({...form, name: e.target.value})}
+                  placeholder="Your name"
+                  className="mt-1"
+                  required
+                />
               </div>
-            </div>
-          )}
-
-          <div className="flex justify-between pt-4">
-            {step > 1 && (
-              <Button variant="outline" onClick={() => setStep(step - 1)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Previous
+              <div>
+                <Label className="text-foreground">Email</Label>
+                <Input
+                  type="email"
+                  value={form.email}
+                  onChange={e => setForm({...form, email: e.target.value})}
+                  placeholder="you@example.com"
+                  className="mt-1"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="text-foreground">Password</Label>
+                <Input
+                  type="password"
+                  value={form.password}
+                  onChange={e => setForm({...form, password: e.target.value})}
+                  placeholder="••••••••"
+                  className="mt-1"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2"
+              >
+                {loading ? "Creating Account..." : "Create Account"} <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
-            )}
-            {step < 3 ? (
-              <Button onClick={handleNext} className="ml-auto">
-                Next
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit} className="ml-auto" disabled={isLoading}>
-                {isLoading ? "Creating Account..." : "Create Account"}
-              </Button>
-            )}
-          </div>
-
-          <div className="text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
-            <a href="/signin" className="text-primary hover:underline">
-              Sign In
-            </a>
-          </div>
-        </CardContent>
-      </Card>
+            </form>
+            <p className="text-center text-sm text-muted-foreground mt-6">
+              Already have an account?{" "}
+              <a href="/signin" className="text-primary hover:underline font-medium">
+                Sign In
+              </a>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
