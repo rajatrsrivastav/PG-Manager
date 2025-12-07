@@ -20,11 +20,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (!userId) return NextResponse.json({ success: false }, { status: 401 });
 
   const { paymentId } = await params;
-  const payment = await prisma.payment.findFirst({
-    where: { id: parseInt(paymentId), student: { pg: { ownerId: userId } } }
+  const payment = await prisma.payment.findUnique({
+    where: { id: parseInt(paymentId) },
+    include: { student: { include: { pg: true } } }
   });
 
-  if (!payment) return NextResponse.json({ success: false }, { status: 404 });
+  if (!payment || payment.student.pg.ownerId !== userId) {
+    return NextResponse.json({ success: false }, { status: 404 });
+  }
 
   const { paid } = await request.json();
   const updated = await prisma.payment.update({
