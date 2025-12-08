@@ -2,8 +2,7 @@
 import { ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { LayoutDashboard, Building2, Users, IndianRupee, LogOut, Search, Bell, Home } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { LayoutDashboard, Building2, Users, IndianRupee, LogOut, Bell, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface Props { children: ReactNode; }
@@ -65,14 +64,7 @@ export default function DashboardLayout({ children }: Props) {
 
       <div className="flex-1 ml-64">
         <header className="bg-background border-b border-border sticky top-0 z-10">
-          <div className="flex items-center justify-between px-8 py-4">
-            <div className="relative w-96">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search properties, students..."
-                className="pl-10 bg-background border-input"
-              />
-            </div>
+          <div className="flex items-center justify-end px-8 py-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                 <Bell className="h-5 w-5" />

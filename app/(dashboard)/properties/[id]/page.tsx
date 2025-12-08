@@ -7,16 +7,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Plus, Edit2, Trash2, X, Check, Clock, Mail, Phone } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Student { id: number; name: string; email: string | null; phone: string | null; monthlyFee: number; payments: Payment[]; }
 interface Payment { id: number; month: string; amount: number; paid: boolean; dueDate: string; }
 interface PG { id: number; name: string; address: string; students: Student[]; }
 
+const fetchPG = async (id: string) => {
+  const res = await fetch(`/api/pgs/${id}`);
+  if (!res.ok) throw new Error("Failed to fetch PG");
+  const data = await res.json();
+  if (!data.success) throw new Error("PG not found");
+  return data.pg;
+};
+
 export default function PropertyDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [pg, setPg] = useState<PG | null>(null);
+  const queryClient = useQueryClient();
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [showFeeModal, setShowFeeModal] = useState<number | null>(null);
@@ -24,15 +33,29 @@ export default function PropertyDetail({ params }: { params: Promise<{ id: strin
   const [feeForm, setFeeForm] = useState({ month: "", amount: "", dueDate: "" });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (!loading && !user) router.push("/signin"); }, [user, loading, router]);
-  useEffect(() => { if (user) fetchPG(); }, [user, id]);
+  const { data: pg, isLoading, error } = useQuery({
+    queryKey: ["pg", id],
+    queryFn: () => fetchPG(id),
+    enabled: !!user,
+  });
 
-  const fetchPG = async () => {
-    const res = await fetch(`/api/pgs/${id}`);
-    const data = await res.json();
-    if (data.success) setPg(data.pg);
-    else router.push("/properties");
-  };
+  const deleteMutation = useMutation({
+    mutationFn: (studentId: number) => fetch(`/api/students/${studentId}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pg", id] }),
+  });
+
+  const togglePaidMutation = useMutation({
+    mutationFn: ({ paymentId, paid }: { paymentId: number; paid: boolean }) =>
+      fetch(`/api/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paid: !paid }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pg", id] }),
+  });
+
+  useEffect(() => { if (!loading && !user) router.push("/signin"); }, [user, loading, router]);
+  useEffect(() => { if (error) router.push("/properties"); }, [error, router]);
 
   const openAddStudent = () => { setEditingStudent(null); setStudentForm({ name: "", email: "", phone: "", monthlyFee: "" }); setShowStudentModal(true); };
   const openEditStudent = (student: Student) => { setEditingStudent(student); setStudentForm({ name: student.name, email: student.email || "", phone: student.phone || "", monthlyFee: student.monthlyFee.toString() }); setShowStudentModal(true); };
@@ -43,14 +66,14 @@ export default function PropertyDetail({ params }: { params: Promise<{ id: strin
     const payload = { ...studentForm, monthlyFee: parseFloat(studentForm.monthlyFee) || 0 };
     if (editingStudent) await fetch(`/api/students/${editingStudent.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     else await fetch(`/api/pgs/${id}/students`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setShowStudentModal(false); setSaving(false); fetchPG();
+    setShowStudentModal(false); setSaving(false); queryClient.invalidateQueries({ queryKey: ["pg", id] });
   };
 
-  const handleDeleteStudent = async (student: Student) => { if (!confirm(`Delete "${student.name}"?`)) return; await fetch(`/api/students/${student.id}`, { method: "DELETE" }); fetchPG(); };
-  const handleAddFee = async (studentId: number) => { if (!feeForm.month || !feeForm.amount || !feeForm.dueDate) return; setSaving(true); await fetch(`/api/students/${studentId}/fees`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...feeForm, amount: parseFloat(feeForm.amount) }) }); setFeeForm({ month: "", amount: "", dueDate: "" }); setShowFeeModal(null); setSaving(false); fetchPG(); };
-  const togglePaid = async (paymentId: number, paid: boolean) => { await fetch(`/api/payments/${paymentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paid: !paid }) }); fetchPG(); };
+  const handleDeleteStudent = (student: Student) => { if (!confirm(`Delete "${student.name}"?`)) return; deleteMutation.mutate(student.id); };
+  const handleAddFee = async (studentId: number) => { if (!feeForm.month || !feeForm.amount || !feeForm.dueDate) return; setSaving(true); await fetch(`/api/students/${studentId}/fees`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...feeForm, amount: parseFloat(feeForm.amount) }) }); setFeeForm({ month: "", amount: "", dueDate: "" }); setShowFeeModal(null); setSaving(false); queryClient.invalidateQueries({ queryKey: ["pg", id] }); };
+  const togglePaid = (paymentId: number, paid: boolean) => { togglePaidMutation.mutate({ paymentId, paid }); };
 
-  if (loading || !pg) return <div className="flex h-64 items-center justify-center">Loading...</div>;
+  if (loading || isLoading || !pg) return <div className="flex h-64 items-center justify-center">Loading...</div>;
 
   return (
     <div>
@@ -70,7 +93,7 @@ export default function PropertyDetail({ params }: { params: Promise<{ id: strin
               <table className="w-full">
                 <thead className="bg-secondary border-b border-border"><tr><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Student</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Contact</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Monthly Fee</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Status</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Actions</th></tr></thead>
                 <tbody className="divide-y divide-border">
-                  {pg.students.map(student => {
+                  {pg.students.map((student: Student) => {
                     const hasPending = student.payments.some(p => !p.paid);
                     return (
                       <tr key={student.id} className="hover:bg-secondary/50 transition-colors">
@@ -89,8 +112,8 @@ export default function PropertyDetail({ params }: { params: Promise<{ id: strin
         </CardContent>
       </Card>
 
-      {pg.students.some(s => s.payments.length > 0) && (
-        <Card className="mt-6"><CardContent className="p-6"><h3 className="font-semibold text-foreground mb-4">Payment Records</h3><div className="space-y-3">{pg.students.flatMap(s => s.payments.map(p => ({ ...p, studentName: s.name }))).sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).slice(0, 10).map(p => (<div key={p.id} className="flex justify-between items-center p-3 rounded-lg bg-secondary/50"><div className="flex items-center gap-4"><div className={`w-2 h-2 rounded-full ${p.paid ? "bg-green-500" : "bg-amber-500"}`} /><div><span className="font-medium text-foreground">{p.studentName}</span><span className="text-muted-foreground mx-2">•</span><span className="text-muted-foreground">{p.month}</span></div></div><div className="flex items-center gap-4"><span className="font-medium text-foreground">₹{p.amount.toLocaleString()}</span><Button size="sm" variant={p.paid ? "default" : "outline"} className={p.paid ? "bg-green-600 hover:bg-green-700" : ""} onClick={() => togglePaid(p.id, p.paid)}>{p.paid ? <><Check className="h-3 w-3 mr-1" /> Paid</> : <><Clock className="h-3 w-3 mr-1" /> Pending</>}</Button></div></div>))}</div></CardContent></Card>
+      {pg.students.some((s: Student) => s.payments.length > 0) && (
+        <Card className="mt-6"><CardContent className="p-6"><h3 className="font-semibold text-foreground mb-4">Payment Records</h3><div className="space-y-3">{pg.students.flatMap((s: Student) => s.payments.map(p => ({ ...p, studentName: s.name }))).sort((a: any, b: any) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()).slice(0, 10).map((p: any) => (<div key={p.id} className="flex justify-between items-center p-3 rounded-lg bg-secondary/50"><div className="flex items-center gap-4"><div className={`w-2 h-2 rounded-full ${p.paid ? "bg-green-500" : "bg-amber-500"}`} /><div><span className="font-medium text-foreground">{p.studentName}</span><span className="text-muted-foreground mx-2">•</span><span className="text-muted-foreground">{p.month}</span></div></div><div className="flex items-center gap-4"><span className="font-medium text-foreground">₹{p.amount.toLocaleString()}</span><Button size="sm" variant={p.paid ? "default" : "outline"} className={p.paid ? "bg-green-600 hover:bg-green-700" : ""} onClick={() => togglePaid(p.id, p.paid)}>{p.paid ? <><Check className="h-3 w-3 mr-1" /> Paid</> : <><Clock className="h-3 w-3 mr-1" /> Pending</>}</Button></div></div>))}</div></CardContent></Card>
       )}
 
       {showStudentModal && (<div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50"><div className="bg-card border border-border rounded-xl p-6 w-full max-w-md shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-semibold text-foreground">{editingStudent ? "Edit Student" : "Add Student"}</h3><button onClick={() => setShowStudentModal(false)}><X className="h-5 w-5 text-muted-foreground" /></button></div><div className="space-y-4"><div><Label>Name *</Label><Input value={studentForm.name} onChange={e => setStudentForm({...studentForm, name: e.target.value})} className="mt-1" /></div><div><Label>Email</Label><Input value={studentForm.email} onChange={e => setStudentForm({...studentForm, email: e.target.value})} className="mt-1" /></div><div><Label>Phone</Label><Input value={studentForm.phone} onChange={e => setStudentForm({...studentForm, phone: e.target.value})} className="mt-1" /></div><div><Label>Monthly Fee (₹)</Label><Input type="number" value={studentForm.monthlyFee} onChange={e => setStudentForm({...studentForm, monthlyFee: e.target.value})} className="mt-1" /></div><div className="flex gap-3 pt-4"><Button variant="outline" onClick={() => setShowStudentModal(false)} className="flex-1">Cancel</Button><Button onClick={handleSaveStudent} disabled={saving} className="flex-1 bg-primary hover:bg-primary/90">{saving ? "Saving..." : editingStudent ? "Update" : "Add"}</Button></div></div></div></div>)}

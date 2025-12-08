@@ -1,55 +1,78 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Download, Check, Clock, AlertCircle } from "lucide-react";
+import { Check, Clock, AlertCircle } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Payment { id: number; month: string; amount: number; paid: boolean; dueDate: string; student: { name: string; pg: { name: string } }; }
+
+const fetchPaymentsData = async () => {
+  const res = await fetch("/api/pgs");
+  if (!res.ok) throw new Error("Failed to fetch data");
+  const data = await res.json();
+  if (!data.success) throw new Error("Failed to fetch data");
+  
+  const allPayments: Payment[] = [];
+  for (const pg of data.pgs) {
+    const pgRes = await fetch(`/api/pgs/${pg.id}`);
+    const pgData = await pgRes.json();
+    if (pgData.success && pgData.pg.students) {
+      for (const student of pgData.pg.students) {
+        allPayments.push(...student.payments.map((p: Payment) => ({ ...p, student: { name: student.name, pg: { name: pg.name } } })));
+      }
+    }
+  }
+  return allPayments;
+};
 
 export default function Fees() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [stats, setStats] = useState({ collected: 0, pending: 0, overdue: 0 });
+  const queryClient = useQueryClient();
+
+  const { data: payments = [], isLoading, error } = useQuery({
+    queryKey: ["payments"],
+    queryFn: fetchPaymentsData,
+    enabled: !!user,
+  });
+
+  const togglePaidMutation = useMutation({
+    mutationFn: ({ paymentId, paid }: { paymentId: number; paid: boolean }) =>
+      fetch(`/api/payments/${paymentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paid: !paid }),
+      }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payments"] }),
+  });
 
   useEffect(() => { if (!loading && !user) router.push("/signin"); }, [user, loading, router]);
-  useEffect(() => { if (user) fetchData(); }, [user]);
 
-  const fetchData = async () => {
-    const res = await fetch("/api/pgs");
-    const data = await res.json();
-    if (data.success) {
-      const allPayments: Payment[] = [];
-      for (const pg of data.pgs) {
-        const pgRes = await fetch(`/api/pgs/${pg.id}`);
-        const pgData = await pgRes.json();
-        if (pgData.success && pgData.pg.students) {
-          for (const student of pgData.pg.students) {
-            allPayments.push(...student.payments.map((p: Payment) => ({ ...p, student: { name: student.name, pg: { name: pg.name } } })));
-          }
-        }
-      }
-      setPayments(allPayments.sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime()));
-      const collected = allPayments.filter(p => p.paid).reduce((sum, p) => sum + p.amount, 0);
-      const pending = allPayments.filter(p => !p.paid).reduce((sum, p) => sum + p.amount, 0);
-      const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const overdue = allPayments.filter(p => !p.paid && new Date(p.dueDate) < thirtyDaysAgo).reduce((sum, p) => sum + p.amount, 0);
-      setStats({ collected, pending, overdue });
-    }
+  const stats = useMemo(() => {
+    const sortedPayments = [...payments].sort((a, b) => new Date(b.dueDate).getTime() - new Date(a.dueDate).getTime());
+    const collected = payments.filter(p => p.paid).reduce((sum, p) => sum + p.amount, 0);
+    const pending = payments.filter(p => !p.paid).reduce((sum, p) => sum + p.amount, 0);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const overdue = payments.filter(p => !p.paid && new Date(p.dueDate) < thirtyDaysAgo).reduce((sum, p) => sum + p.amount, 0);
+    return { collected, pending, overdue, sortedPayments };
+  }, [payments]);
+
+  const togglePaid = (paymentId: number, paid: boolean) => {
+    togglePaidMutation.mutate({ paymentId, paid });
   };
 
-  const togglePaid = async (paymentId: number, paid: boolean) => { await fetch(`/api/payments/${paymentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ paid: !paid }) }); fetchData(); };
-
-  if (loading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
+  if (loading || isLoading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
   if (!user) return null;
+  if (error) return <div className="flex h-64 items-center justify-center text-red-500">Error loading payments</div>;
 
   return (
     <div>
-      <div className="flex justify-between items-start mb-8">
+      <div className="mb-8">
         <div><h1 className="text-2xl font-bold text-foreground">Fees & Payments</h1><p className="text-muted-foreground">Track payments, dues, and transaction history.</p></div>
-        <Button variant="outline"><Download className="h-4 w-4 mr-2" /> Export Report</Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 mb-8">
@@ -61,13 +84,13 @@ export default function Fees() {
       <Card>
         <CardContent className="p-0">
           <div className="p-6 border-b"><h3 className="font-semibold text-foreground">Recent Transactions</h3><p className="text-sm text-muted-foreground">Latest payment activities across all properties.</p></div>
-          {payments.length === 0 ? (
+          {stats.sortedPayments.length === 0 ? (
             <div className="p-12 text-center"><p className="text-muted-foreground">No payment records yet</p></div>
           ) : (
             <table className="w-full">
               <thead className="bg-secondary border-b"><tr><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Transaction ID</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Student</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Type</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Date</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Amount</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Status</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Action</th></tr></thead>
               <tbody className="divide-y">
-                {payments.map((p, i) => {
+                {stats.sortedPayments.map((p, i) => {
                   const isOverdue = !p.paid && new Date(p.dueDate) < new Date();
                   return (
                     <tr key={p.id} className="hover:bg-secondary/50">

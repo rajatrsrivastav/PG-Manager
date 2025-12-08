@@ -1,43 +1,47 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useMemo, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Building2, Users, IndianRupee, AlertCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 interface PG { id: number; name: string; address: string; _count: { students: number }; }
+
+const fetchPGs = async () => {
+  const res = await fetch("/api/pgs");
+  if (!res.ok) throw new Error("Failed to fetch PGs");
+  return res.json();
+};
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [pgs, setPgs] = useState<PG[]>([]);
-  const [stats, setStats] = useState({ totalPgs: 0, totalStudents: 0, pending: 0, revenue: 0 });
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["pgs"],
+    queryFn: fetchPGs,
+    enabled: !!user,
+  });
 
   useEffect(() => {
     if (!loading && !user) router.push("/signin");
   }, [user, loading, router]);
 
-  useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+  const stats = useMemo(() => {
+    if (!data?.success) return { totalPgs: 0, totalStudents: 0, pending: 0, revenue: 0 };
+    const totalStudents = data.pgs.reduce((sum: number, pg: PG) => sum + pg._count.students, 0);
+    return {
+      totalPgs: data.pgs.length,
+      totalStudents,
+      pending: Math.floor(totalStudents * 0.3) * 8000,
+      revenue: totalStudents * 8000,
+    };
+  }, [data]);
 
-  const fetchData = async () => {
-    const res = await fetch("/api/pgs");
-    const data = await res.json();
-    if (data.success) {
-      setPgs(data.pgs);
-      const totalStudents = data.pgs.reduce((sum: number, pg: PG) => sum + pg._count.students, 0);
-      setStats({
-        totalPgs: data.pgs.length,
-        totalStudents,
-        pending: Math.floor(totalStudents * 0.3) * 8000,
-        revenue: totalStudents * 8000,
-      });
-    }
-  };
-
-  if (loading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
+  if (loading || isLoading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
   if (!user) return null;
+  if (error) return <div className="flex h-64 items-center justify-center text-red-500">Error loading data</div>;
 
   const activities = [
     { text: "New student added to Sunrise PG", time: "2 hours ago", color: "bg-black" },

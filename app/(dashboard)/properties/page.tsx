@@ -7,13 +7,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, MapPin, Users, Edit2, Trash2, X, Filter } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface PG { id: number; name: string; address: string; image: string | null; _count: { students: number }; }
+
+const fetchPGs = async () => {
+  const res = await fetch("/api/pgs");
+  if (!res.ok) throw new Error("Failed to fetch PGs");
+  return res.json();
+};
 
 export default function Properties() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [pgs, setPgs] = useState<PG[]>([]);
+  const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [editingPg, setEditingPg] = useState<PG | null>(null);
   const [form, setForm] = useState({ name: "", address: "", image: "" });
@@ -21,19 +28,20 @@ export default function Properties() {
   const [uploading, setUploading] = useState(false);
   const [filter, setFilter] = useState("");
 
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["pgs"],
+    queryFn: fetchPGs,
+    enabled: !!user,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => fetch(`/api/pgs/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["pgs"] }),
+  });
+
   useEffect(() => {
     if (!loading && !user) router.push("/signin");
   }, [user, loading, router]);
-
-  useEffect(() => {
-    if (user) fetchPGs();
-  }, [user]);
-
-  const fetchPGs = async () => {
-    const res = await fetch("/api/pgs");
-    const data = await res.json();
-    if (data.success) setPgs(data.pgs);
-  };
 
   const openCreate = () => {
     setEditingPg(null);
@@ -93,22 +101,23 @@ export default function Properties() {
     }
     setShowModal(false);
     setSaving(false);
-    fetchPGs();
+    queryClient.invalidateQueries({ queryKey: ["pgs"] });
   };
 
   const handleDelete = async (pg: PG) => {
     if (!confirm(`Delete "${pg.name}" and all its students?`)) return;
-    await fetch(`/api/pgs/${pg.id}`, { method: "DELETE" });
-    fetchPGs();
+    deleteMutation.mutate(pg.id);
   };
 
-  const filteredPgs = pgs.filter(pg =>
+  const pgs = data?.success ? data.pgs : [];
+  const filteredPgs = pgs.filter((pg: PG) =>
     pg.name.toLowerCase().includes(filter.toLowerCase()) ||
     pg.address.toLowerCase().includes(filter.toLowerCase())
   );
 
-  if (loading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
+  if (loading || isLoading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
   if (!user) return null;
+  if (error) return <div className="flex h-64 items-center justify-center text-red-500">Error loading properties</div>;
 
   return (
     <div>
@@ -136,7 +145,7 @@ export default function Properties() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPgs.map(pg => (
+          {filteredPgs.map((pg: PG) => (
             <Card key={pg.id} className="overflow-hidden hover:shadow-lg transition-all group border border-border bg-card">
               <div className="h-48 relative bg-secondary/20">
                 {pg.image ? (

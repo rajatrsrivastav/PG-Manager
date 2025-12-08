@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -7,39 +7,55 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Search, Edit2, Trash2, X, Mail, Phone, MoreHorizontal } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface Student { id: number; name: string; email: string | null; phone: string | null; monthlyFee: number; pgId: number; pg?: { name: string }; payments: { paid: boolean }[]; }
+
+const fetchStudentsData = async () => {
+  const res = await fetch("/api/pgs");
+  if (!res.ok) throw new Error("Failed to fetch data");
+  const data = await res.json();
+  if (!data.success) throw new Error("Failed to fetch data");
+  
+  const pgs = data.pgs.map((pg: { id: number; name: string }) => ({ id: pg.id, name: pg.name }));
+  const allStudents: Student[] = [];
+  
+  for (const pg of data.pgs) {
+    const pgRes = await fetch(`/api/pgs/${pg.id}`);
+    const pgData = await pgRes.json();
+    if (pgData.success && pgData.pg.students) {
+      allStudents.push(...pgData.pg.students.map((s: Student) => ({ ...s, pg: { name: pg.name } })));
+    }
+  }
+  
+  return { pgs, students: allStudents };
+};
 
 export default function Students() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [pgs, setPgs] = useState<{ id: number; name: string }[]>([]);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", monthlyFee: "", pgId: "" });
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (!loading && !user) router.push("/signin"); }, [user, loading, router]);
-  useEffect(() => { if (user) fetchData(); }, [user]);
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["students-data"],
+    queryFn: fetchStudentsData,
+    enabled: !!user,
+  });
 
-  const fetchData = async () => {
-    const res = await fetch("/api/pgs");
-    const data = await res.json();
-    if (data.success) {
-      setPgs(data.pgs.map((pg: { id: number; name: string }) => ({ id: pg.id, name: pg.name })));
-      const allStudents: Student[] = [];
-      for (const pg of data.pgs) {
-        const pgRes = await fetch(`/api/pgs/${pg.id}`);
-        const pgData = await pgRes.json();
-        if (pgData.success && pgData.pg.students) {
-          allStudents.push(...pgData.pg.students.map((s: Student) => ({ ...s, pg: { name: pg.name } })));
-        }
-      }
-      setStudents(allStudents);
-    }
-  };
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => fetch(`/api/students/${id}`, { method: "DELETE" }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["students-data"] }),
+  });
+
+  useEffect(() => { if (!loading && !user) router.push("/signin"); }, [user, loading, router]);
+
+  const pgs = data?.pgs || [];
+  const students = data?.students || [];
 
   const openAdd = () => { if (pgs.length === 0) { alert("Add a property first"); return; } setEditingStudent(null); setForm({ name: "", email: "", phone: "", monthlyFee: "", pgId: pgs[0].id.toString() }); setShowModal(true); };
   const openEdit = (student: Student) => { setEditingStudent(student); setForm({ name: student.name, email: student.email || "", phone: student.phone || "", monthlyFee: student.monthlyFee.toString(), pgId: student.pgId.toString() }); setShowModal(true); };
@@ -50,15 +66,16 @@ export default function Students() {
     const payload = { name: form.name, email: form.email, phone: form.phone, monthlyFee: parseFloat(form.monthlyFee) || 0 };
     if (editingStudent) await fetch(`/api/students/${editingStudent.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     else await fetch(`/api/pgs/${form.pgId}/students`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setShowModal(false); setSaving(false); fetchData();
+    setShowModal(false); setSaving(false); queryClient.invalidateQueries({ queryKey: ["students-data"] });
   };
 
-  const handleDelete = async (student: Student) => { if (!confirm(`Delete "${student.name}"?`)) return; await fetch(`/api/students/${student.id}`, { method: "DELETE" }); fetchData(); };
+  const handleDelete = async (student: Student) => { if (!confirm(`Delete "${student.name}"?`)) return; deleteMutation.mutate(student.id); };
 
-  const filtered = students.filter(s => s.name.toLowerCase().includes(search.toLowerCase()) || s.email?.toLowerCase().includes(search.toLowerCase()) || s.pg?.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = students.filter((s: Student) => s.name.toLowerCase().includes(search.toLowerCase()) || s.email?.toLowerCase().includes(search.toLowerCase()) || s.pg?.name.toLowerCase().includes(search.toLowerCase()));
 
-  if (loading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
+  if (loading || isLoading) return <div className="flex h-64 items-center justify-center">Loading...</div>;
   if (!user) return null;
+  if (error) return <div className="flex h-64 items-center justify-center text-red-500">Error loading students</div>;
 
   return (
     <div>
@@ -99,7 +116,7 @@ export default function Students() {
         </CardContent>
       </Card>
 
-      {showModal && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"><div className="bg-card rounded-xl p-6 w-full max-w-md shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-semibold">{editingStudent ? "Edit Student" : "Add Student"}</h3><button onClick={() => setShowModal(false)}><X className="h-5 w-5 text-muted-foreground" /></button></div><div className="space-y-4">{!editingStudent && (<div><Label>Property *</Label><select value={form.pgId} onChange={e => setForm({ ...form, pgId: e.target.value })} className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-foreground">{pgs.map(pg => <option key={pg.id} value={pg.id}>{pg.name}</option>)}</select></div>)}<div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" /></div><div><Label>Email</Label><Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="mt-1" /></div><div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="mt-1" /></div><div><Label>Monthly Fee (₹)</Label><Input type="number" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} className="mt-1" /></div><div className="flex gap-3 pt-4"><Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button><Button onClick={handleSave} disabled={saving} className="flex-1 bg-primary hover:bg-primary/90">{saving ? "Saving..." : editingStudent ? "Update" : "Add"}</Button></div></div></div></div>)}
+      {showModal && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"><div className="bg-card rounded-xl p-6 w-full max-w-md shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-semibold">{editingStudent ? "Edit Student" : "Add Student"}</h3><button onClick={() => setShowModal(false)}><X className="h-5 w-5 text-muted-foreground" /></button></div><div className="space-y-4">{!editingStudent && (<div><Label>Property *</Label><select value={form.pgId} onChange={e => setForm({ ...form, pgId: e.target.value })} className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-foreground">{pgs.map((pg: { id: number; name: string }) => <option key={pg.id} value={pg.id}>{pg.name}</option>)}</select></div>)}<div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" /></div><div><Label>Email</Label><Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="mt-1" /></div><div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="mt-1" /></div><div><Label>Monthly Fee (₹)</Label><Input type="number" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} className="mt-1" /></div><div className="flex gap-3 pt-4"><Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button><Button onClick={handleSave} disabled={saving} className="flex-1 bg-primary hover:bg-primary/90">{saving ? "Saving..." : editingStudent ? "Update" : "Add"}</Button></div></div></div></div>)}
     </div>
   );
 }
