@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
+import cache from "memory-cache";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -20,13 +21,24 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
   if (!userId) return NextResponse.json({ success: false }, { status: 401 });
 
   const { id } = await params;
+  const cacheKey = `pg-${id}-${userId}`;
+  const cachedData = cache.get(cacheKey);
+
+  if (cachedData) {
+    return NextResponse.json(cachedData);
+  }
+
   const pg = await prisma.pG.findFirst({
     where: { id: parseInt(id), ownerId: userId },
     include: { students: { include: { payments: { orderBy: { dueDate: "desc" } } } } }
   });
 
   if (!pg) return NextResponse.json({ success: false }, { status: 404 });
-  return NextResponse.json({ success: true, pg });
+
+  const data = { success: true, pg };
+  cache.put(cacheKey, data, 300000); // Cache for 5 minutes
+
+  return NextResponse.json(data);
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -46,6 +58,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   });
 
   if (pg.count === 0) return NextResponse.json({ success: false }, { status: 404 });
+
+  // Invalidate caches
+  const pgCacheKey = `pg-${id}-${userId}`;
+  const listCacheKey = `pgs-${userId}`;
+  cache.del(pgCacheKey);
+  cache.del(listCacheKey);
+
   return NextResponse.json({ success: true });
 }
 
@@ -59,6 +78,12 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   await prisma.payment.deleteMany({ where: { student: { pgId } } });
   await prisma.student.deleteMany({ where: { pgId } });
   await prisma.pG.deleteMany({ where: { id: pgId, ownerId: userId } });
+
+  // Invalidate caches
+  const pgCacheKey = `pg-${id}-${userId}`;
+  const listCacheKey = `pgs-${userId}`;
+  cache.del(pgCacheKey);
+  cache.del(listCacheKey);
 
   return NextResponse.json({ success: true });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/prisma";
+import cache from "memory-cache";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -19,11 +20,22 @@ export async function GET() {
   const userId = await getUserId();
   if (!userId) return NextResponse.json({ success: false }, { status: 401 });
 
+  const cacheKey = `pgs-${userId}`;
+  const cachedData = cache.get(cacheKey);
+
+  if (cachedData) {
+    return NextResponse.json(cachedData);
+  }
+
   const pgs = await prisma.pG.findMany({
     where: { ownerId: userId },
     include: { _count: { select: { students: true } } }
   });
-  return NextResponse.json({ success: true, pgs });
+
+  const data = { success: true, pgs };
+  cache.put(cacheKey, data, 300000); // Cache for 5 minutes
+
+  return NextResponse.json(data);
 }
 
 export async function POST(request: NextRequest) {
@@ -36,5 +48,10 @@ export async function POST(request: NextRequest) {
   }
 
   const pg = await prisma.pG.create({ data: { name, address, image, ownerId: userId } });
+
+  // Invalidate cache for this user
+  const cacheKey = `pgs-${userId}`;
+  cache.del(cacheKey);
+
   return NextResponse.json({ success: true, pg }, { status: 201 });
 }
