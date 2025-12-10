@@ -71,41 +71,89 @@ export default function Fees() {
 
   return (
     <div>
-      <div className="mb-8">
-        <div><h1 className="text-2xl font-bold text-foreground">Fees & Payments</h1><p className="text-muted-foreground">Track payments, dues, and transaction history.</p></div>
+      <div className="flex justify-between items-start mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Fees & Payments</h1>
+          <p className="text-gray-500 mt-1">Track payments, dues, and transaction history.</p>
+        </div>
+        <Button variant="outline" className="bg-white border-gray-300 text-gray-700 hover:bg-gray-50">
+          Export Report
+        </Button>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <Card className="border-l-4 border-l-black"><CardContent className="p-6"><p className="text-sm text-muted-foreground mb-1">Collected This Month</p><p className="text-3xl font-bold text-foreground">₹{stats.collected.toLocaleString()}</p></CardContent></Card>
-        <Card className="border-l-4 border-l-black"><CardContent className="p-6"><p className="text-sm text-muted-foreground mb-1">Pending Dues</p><p className="text-3xl font-bold text-foreground">₹{stats.pending.toLocaleString()}</p></CardContent></Card>
-        <Card className="border-l-4 border-l-black"><CardContent className="p-6"><p className="text-sm text-muted-foreground mb-1">Overdue (30+ days)</p><p className="text-3xl font-bold text-foreground">₹{stats.overdue.toLocaleString()}</p></CardContent></Card>
+        <Card className="bg-green-50 border border-green-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-green-700 mb-1">Collected This Month</p>
+            <p className="text-3xl font-bold text-green-900">₹{stats.collected.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-yellow-50 border border-yellow-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-yellow-700 mb-1">Pending Dues</p>
+            <p className="text-3xl font-bold text-yellow-900">₹{stats.pending.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border border-red-100 shadow-sm rounded-xl">
+          <CardContent className="p-6">
+            <p className="text-sm font-medium text-red-700 mb-1">Overdue (30+ days)</p>
+            <p className="text-3xl font-bold text-red-900">₹{stats.overdue.toLocaleString()}</p>
+          </CardContent>
+        </Card>
       </div>
 
-      <Card>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="p-6 border-b"><h3 className="font-semibold text-foreground">Recent Transactions</h3><p className="text-sm text-muted-foreground">Latest payment activities across all properties.</p></div>
+          <div className="p-6 border-b border-gray-100">
+            <h3 className="font-semibold text-gray-900 text-lg">Recent Transactions</h3>
+            <p className="text-sm text-gray-500 mt-1">Latest payment activities across all properties.</p>
+          </div>
           {stats.sortedPayments.length === 0 ? (
-            <div className="p-12 text-center"><p className="text-muted-foreground">No payment records yet</p></div>
+            <div className="p-16 text-center"><p className="text-gray-500">No payment records yet</p></div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-secondary border-b"><tr><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Transaction ID</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Student</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Type</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Date</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Amount</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Status</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Action</th></tr></thead>
-              <tbody className="divide-y">
-                {stats.sortedPayments.map((p, i) => {
-                  const isOverdue = !p.paid && new Date(p.dueDate) < new Date();
-                  return (
-                    <tr key={p.id} className="hover:bg-secondary/50">
-                      <td className="px-6 py-4 text-sm text-muted-foreground">TXN-{String(i + 1).padStart(3, "0")}</td>
-                      <td className="px-6 py-4 font-medium text-foreground">{p.student.name}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{p.month}</td>
-                      <td className="px-6 py-4 text-muted-foreground">{new Date(p.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                      <td className="px-6 py-4 font-medium text-foreground">₹{p.amount.toLocaleString()}</td>
-                      <td className="px-6 py-4">{p.paid ? (<span className="inline-flex items-center gap-1 text-foreground"><Check className="h-4 w-4" /> Success</span>) : isOverdue ? (<span className="inline-flex items-center gap-1 text-destructive"><AlertCircle className="h-4 w-4" /> Failed</span>) : (<span className="inline-flex items-center gap-1 text-muted-foreground"><Clock className="h-4 w-4" /> Pending</span>)}</td>
-                      <td className="px-6 py-4"><Button size="sm" variant="ghost" onClick={() => togglePaid(p.id, p.paid)}>{p.paid ? "Mark Unpaid" : "Mark Paid"}</Button></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Transaction ID</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Receipt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {stats.sortedPayments.map((p, i) => {
+                    const isOverdue = !p.paid && new Date(p.dueDate) < new Date();
+                    return (
+                      <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4 text-sm text-gray-500 font-mono">TXN-{String(i + 1).padStart(3, "0")}</td>
+                        <td className="px-6 py-4 font-medium text-gray-900">{p.student.name}</td>
+                        <td className="px-6 py-4 text-gray-500">{p.month}</td>
+                        <td className="px-6 py-4 text-gray-500">{new Date(p.dueDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</td>
+                        <td className="px-6 py-4 font-bold text-gray-900">₹{p.amount.toLocaleString()}</td>
+                        <td className="px-6 py-4">
+                          {p.paid ? (
+                            <span className="inline-flex items-center gap-1.5 text-green-600 text-sm font-medium"><Check className="h-4 w-4" /> Success</span>
+                          ) : isOverdue ? (
+                            <span className="inline-flex items-center gap-1.5 text-red-600 text-sm font-medium"><AlertCircle className="h-4 w-4" /> Failed</span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-yellow-600 text-sm font-medium"><Clock className="h-4 w-4" /> Pending</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Button size="sm" variant="ghost" className="text-gray-500 hover:text-gray-900" onClick={() => togglePaid(p.id, p.paid)}>
+                            Download
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>

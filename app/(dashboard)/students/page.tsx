@@ -80,43 +80,133 @@ export default function Students() {
   return (
     <div>
       <div className="flex justify-between items-start mb-8">
-        <div><h1 className="text-2xl font-bold text-foreground">Students</h1><p className="text-muted-foreground">Manage student records and assignments.</p></div>
-        <Button onClick={openAdd} className="bg-primary hover:bg-primary/90"><Plus className="h-4 w-4 mr-2" /> Add Student</Button>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Students</h1>
+          <p className="text-gray-500 mt-1">Manage student records and assignments.</p>
+        </div>
+        <Button onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
+          <Plus className="h-4 w-4 mr-2" /> Add Student
+        </Button>
       </div>
 
-      <Card>
+      <Card className="bg-white border border-gray-200 shadow-sm rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="p-6 border-b flex justify-between items-center">
-            <div><h3 className="font-semibold text-foreground">All Students</h3></div>
-            <div className="relative w-64"><Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Search students..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" /></div>
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <div><h3 className="font-semibold text-gray-900 text-lg">All Students</h3></div>
+            <div className="relative w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input 
+                placeholder="Search students..." 
+                value={search} 
+                onChange={e => setSearch(e.target.value)} 
+                className="pl-10 bg-white border-gray-200 text-gray-900" 
+              />
+            </div>
           </div>
 
           {filtered.length === 0 ? (
-            <div className="p-12 text-center"><p className="text-muted-foreground mb-4">No students found</p><Button onClick={openAdd}><Plus className="h-4 w-4 mr-2" /> Add Student</Button></div>
+            <div className="p-16 text-center">
+              <p className="text-gray-500 mb-4">No students found</p>
+              <Button onClick={openAdd} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="h-4 w-4 mr-2" /> Add Student</Button>
+            </div>
           ) : (
-            <table className="w-full">
-              <thead className="bg-secondary border-b"><tr><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Student</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Contact</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">PG</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Status</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Payment</th><th className="text-left px-6 py-4 text-xs font-medium text-muted-foreground uppercase">Actions</th></tr></thead>
-              <tbody className="divide-y">
-                {filtered.map(student => {
-                  const hasPending = student.payments?.some(p => !p.paid);
-                  return (
-                    <tr key={student.id} className="hover:bg-secondary/50">
-                      <td className="px-6 py-4"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground font-medium text-sm">{student.name.split(" ").map(n => n[0]).join("").slice(0, 2)}</div><div><p className="font-medium text-foreground">{student.name}</p><p className="text-xs text-muted-foreground">Added recently</p></div></div></td>
-                      <td className="px-6 py-4 text-sm">{student.email && <div className="flex items-center gap-1 text-muted-foreground"><Mail className="h-3 w-3" /> {student.email}</div>}{student.phone && <div className="flex items-center gap-1 text-muted-foreground mt-1"><Phone className="h-3 w-3" /> {student.phone}</div>}</td>
-                      <td className="px-6 py-4"><p className="text-foreground">{student.pg?.name}</p></td>
-                      <td className="px-6 py-4"><span className="inline-flex px-2 py-1 rounded-full text-xs font-medium bg-black text-white">Active</span></td>
-                      <td className="px-6 py-4"><span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${hasPending ? "bg-secondary text-foreground border border-black" : "bg-black text-white"}`}>{hasPending ? "Pending" : "Paid"}</span></td>
-                      <td className="px-6 py-4"><div className="flex items-center gap-1"><Button size="sm" variant="ghost" onClick={() => openEdit(student)}><Edit2 className="h-4 w-4" /></Button><Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(student)}><Trash2 className="h-4 w-4" /></Button><Button size="sm" variant="ghost"><MoreHorizontal className="h-4 w-4" /></Button></div></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-white border-b border-gray-100">
+                  <tr>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Student</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">PG & Room</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
+                    <th className="text-right px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {filtered.map(student => {
+                    const hasPending = student.payments?.some(p => !p.paid);
+                    return (
+                      <tr key={student.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-medium text-sm border border-gray-200">
+                              {student.name.split(" ").map(n => n[0]).join("").slice(0, 2)}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{student.name}</p>
+                              <p className="text-xs text-gray-500">Added recently</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm">
+                          {student.email && <div className="flex items-center gap-2 text-gray-500 mb-1"><Mail className="h-3.5 w-3.5" /> {student.email}</div>}
+                          {student.phone && <div className="flex items-center gap-2 text-gray-500"><Phone className="h-3.5 w-3.5" /> {student.phone}</div>}
+                        </td>
+                        <td className="px-6 py-4">
+                          <p className="text-gray-900 font-medium">{student.pg?.name}</p>
+                          <p className="text-xs text-gray-500">Room 101</p>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">Active</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium border ${
+                            hasPending 
+                              ? "bg-yellow-50 text-yellow-700 border-yellow-200" 
+                              : "bg-green-50 text-green-700 border-green-200"
+                          }`}>
+                            {hasPending ? "Pending" : "Paid"}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 text-gray-400 hover:text-blue-600" onClick={() => openEdit(student)}><Edit2 className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 text-gray-400 hover:text-red-600" onClick={() => handleDelete(student)}><Trash2 className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 text-gray-400 hover:text-gray-600"><MoreHorizontal className="h-4 w-4" /></Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {showModal && (<div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"><div className="bg-card rounded-xl p-6 w-full max-w-md shadow-xl"><div className="flex justify-between items-center mb-6"><h3 className="text-xl font-semibold">{editingStudent ? "Edit Student" : "Add Student"}</h3><button onClick={() => setShowModal(false)}><X className="h-5 w-5 text-muted-foreground" /></button></div><div className="space-y-4">{!editingStudent && (<div><Label>Property *</Label><select value={form.pgId} onChange={e => setForm({ ...form, pgId: e.target.value })} className="w-full mt-1 px-3 py-2 border rounded-md bg-background text-foreground">{pgs.map((pg: { id: number; name: string }) => <option key={pg.id} value={pg.id}>{pg.name}</option>)}</select></div>)}<div><Label>Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1" /></div><div><Label>Email</Label><Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="mt-1" /></div><div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="mt-1" /></div><div><Label>Monthly Fee (₹)</Label><Input type="number" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} className="mt-1" /></div><div className="flex gap-3 pt-4"><Button variant="outline" onClick={() => setShowModal(false)} className="flex-1">Cancel</Button><Button onClick={handleSave} disabled={saving} className="flex-1 bg-primary hover:bg-primary/90">{saving ? "Saving..." : editingStudent ? "Update" : "Add"}</Button></div></div></div></div>)}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white border border-gray-200 rounded-xl p-6 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">{editingStudent ? "Edit Student" : "Add Student"}</h3>
+              <button onClick={() => setShowModal(false)}><X className="h-5 w-5 text-gray-400 hover:text-gray-600" /></button>
+            </div>
+            <div className="space-y-4">
+              {!editingStudent && (
+                <div>
+                  <Label className="text-gray-700">Property *</Label>
+                  <select 
+                    value={form.pgId} 
+                    onChange={e => setForm({ ...form, pgId: e.target.value })} 
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    {pgs.map((pg: { id: number; name: string }) => <option key={pg.id} value={pg.id}>{pg.name}</option>)}
+                  </select>
+                </div>
+              )}
+              <div><Label className="text-gray-700">Name *</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="mt-1 bg-white border-gray-300 text-gray-900" /></div>
+              <div><Label className="text-gray-700">Email</Label><Input value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="mt-1 bg-white border-gray-300 text-gray-900" /></div>
+              <div><Label className="text-gray-700">Phone</Label><Input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} className="mt-1 bg-white border-gray-300 text-gray-900" /></div>
+              <div><Label className="text-gray-700">Monthly Fee (₹)</Label><Input type="number" value={form.monthlyFee} onChange={e => setForm({...form, monthlyFee: e.target.value})} className="mt-1 bg-white border-gray-300 text-gray-900" /></div>
+              <div className="flex gap-3 pt-4">
+                <Button variant="outline" onClick={() => setShowModal(false)} className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</Button>
+                <Button onClick={handleSave} disabled={saving} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">{saving ? "Saving..." : editingStudent ? "Update" : "Add"}</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
